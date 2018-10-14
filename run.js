@@ -1,10 +1,7 @@
-var http = require('http');
-var fs = require('fs');
+const express = require('express')
+const app = express()
+const port = 3000
 
-http.createServer(function (req, res) {
-  fs.readFile('index.html', function(err, data) {
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.write(data);
-    res.end();
-  });
-}).listen(8080);
+app.use(express.static('public'))
+
+app.listen(port, () => console.log(`listening on port ${port}!`))

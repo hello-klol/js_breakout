@@ -1,20 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Breakout</title>
-    <style>
-    	* { padding: 0; margin: 0 }
-    	canvas { background: #eee; display: block; margin: 0 auto }
-    </style>
-</head>
-<body>
-
-<canvas id="gameCanvas" width="480" height="320"></canvas>
-
-<script>
-var canvas = document.getElementById("gameCanvas")
-var ctx = canvas.getContext("2d")
+const canvas = document.getElementById("gameCanvas")
+const ctx = canvas.getContext("2d")
 
 var score = 0
 var lives = 3
@@ -44,23 +29,18 @@ const Brick = (c, r) => ({
   y: (r*(brickHeight+brickPadding))+brickOffsetTop
 })
 
-const array = length => Array.from({length})
+// Recreating simple version of Python's `range` function
+const range = n => [...Array(n).keys()]
 
-var bricks = array(brickColumnCount)
-  .map((_, c) =>
-    array(brickRowCount)
-      .map((_, r) => 
-        Brick(c, r) 
-      )
+// Use row and column indices to generate x, y values for layout
+// Then compress into a single array for easy iteration
+var bricks = range(brickColumnCount).map((_, c) =>
+    range(brickRowCount).map((_, r) =>
+      Brick(c, r)
+    )
+  ).reduce((acc, col) => 
+    acc.concat(col), []
   )
-
-function* getBrick() {
-  for(var c=0; c<brickColumnCount; c++) {
-    for(var r=0; r<brickRowCount; r++) {
-      yield bricks[c][r]
-    }
-  }
-}
 
 function initialState() {
   ballX = canvas.width/2
@@ -81,6 +61,12 @@ function drawLives() {
   ctx.fillText("Lives: "+lives, canvas.width-85, 20)
 }
 
+function drawMessage(msg) {
+  ctx.font = "18px monospace"
+  ctx.fillStyle = "#0095DD"
+  ctx.fillText(msg, (canvas.width/2)-(msg.length*6), canvas.height/2)
+}
+
 function drawBall() {
   ctx.beginPath()
   ctx.arc(ballX, ballY, ballRadius, 0, Math.PI*2)
@@ -98,7 +84,7 @@ function drawPaddle() {
 }
 
 function drawBricks() {
-  for(let b of getBrick()) {
+  for(let b of bricks) {
     if (!b.alive) { continue }
     ctx.beginPath()
     ctx.rect(b.x, b.y, brickWidth, brickHeight)
@@ -151,29 +137,34 @@ function loseLife() {
   lives--
   if(lives){ return }
   gameOver = true
-  alert("GAME OVER")
-  document.location.reload()
+  finalScreen("GAME OVER")
 }
 
 function checkForWin() {
   if(score == brickRowCount*brickColumnCount) {
     gameOver = true
-    alert("YOU WIN, CONGRATULATIONS!")
-    document.location.reload()
+    finalScreen("YOU WIN, CONGRATULATIONS!")
   }
+}
+
+function finalScreen(msg) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  drawScore()
+  drawLives()
+  drawMessage(msg)
 }
 
 function ballHitBrick(b) {
   return (
-      ballX > b.x && 
-      ballX < b.x+brickWidth && 
-      ballY > b.y && 
-      ballY < b.y+brickHeight
-    )
+    ballX > b.x && 
+    ballX < b.x+brickWidth && 
+    ballY > b.y && 
+    ballY < b.y+brickHeight
+  )
 }
 
 function collisionDetection() {
-  for(let b of getBrick()) {
+  for(let b of bricks) {
     if (!b.alive) { continue }
     else if(ballHitBrick(b)) {
       dy = -dy
@@ -184,8 +175,6 @@ function collisionDetection() {
   }
 }
 
-document.addEventListener("keydown", keyDownHandler, false)
-document.addEventListener("keyup", keyUpHandler, false)
 
 function keyDownHandler(e) {
   if(e.keyCode == 39) {
@@ -197,18 +186,41 @@ function keyDownHandler(e) {
 }
 
 function keyUpHandler(e) {
-  if(e.keyCode == 39) {
+  if(e.keyCode === 39) {
     rightPressed = false
   }
-  else if(e.keyCode == 37) {
+  else if(e.keyCode === 37) {
     leftPressed = false
   }
 }
 
-initialState()
-draw()
+function splashIO(e) {
+  if(e.type === "click" || (e.type === "keydown" && e.code === "Enter")){
+    canvas.removeEventListener("click",splashIO);
+    canvas.removeEventListener("keydown",splashIO);
+    gameStates.startGame();
+  }
+}
 
-</script>
+const gameStates = {
+  setupSplash () { // setup splash screen ==========================
+    canvas.addEventListener("click", splashIO)
+    canvas.addEventListener("keydown", splashIO)
+    gameStates.splash() 
+  },
+  splash () {  // display splash ===================================
+    msg = "Click on the canvas to begin"
+    drawMessage(msg)
+  },
+  startGame () { // setup game =====================================
+    initialState()
+    document.addEventListener("keydown", keyDownHandler, false)
+    document.addEventListener("keyup", keyUpHandler, false)
+    gameStates.game();  
+  },
+  game () {  // plays the main game  ===============================
+    draw()
+  }
+}
 
-</body>
-</html>
+gameStates.setupSplash()
