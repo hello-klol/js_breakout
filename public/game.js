@@ -34,8 +34,8 @@ const range = n => [...Array(n).keys()]
 
 // Use row and column indices to generate x, y values for layout
 // Then compress into a single array for easy iteration
-var bricks = range(brickColumnCount).map((_, c) =>
-    range(brickRowCount).map((_, r) =>
+var bricks = range(brickColumnCount).map(c =>
+    range(brickRowCount).map(r =>
       Brick(c, r)
     )
   ).reduce((acc, col) => 
@@ -47,6 +47,10 @@ function initialState() {
   ballY = canvas.height-30
   dx = 3
   dy = -3
+}
+
+function cleanCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
 }
 
 function drawScore() {
@@ -94,25 +98,55 @@ function drawBricks() {
   }
 }
 
+function ballHitWall() {
+  return (ballX + dx > canvas.width-ballRadius || ballX + dx < ballRadius)
+}
+
+function ballHitCeiling() {
+  return (ballY + dy < ballRadius)
+}
+
+function ballHitFloor() {
+  return (ballY + dy > canvas.height-ballRadius)
+}
+
+function ballHitPaddle() {
+  return (ballX > paddleX && ballX < paddleX + paddleWidth)
+}
+
+function moveBall() {
+  ballX += dx
+  ballY += dy
+}
+
+function movePaddle() {
+  if(rightPressed && paddleX < canvas.width-paddleWidth) {
+    paddleX += 7
+  }
+  else if(leftPressed && paddleX > 0) {
+    paddleX -= 7
+  }
+}
+
 function draw() {
   if (gameOver) { return }
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  cleanCanvas()  
   drawBall()
   drawPaddle()
   drawScore()
   drawLives()
-  collisionDetection()
   drawBricks()
 
-  if(ballX + dx > canvas.width-ballRadius || ballX + dx < ballRadius) {
+  if (ballHitWall()) {
     dx = -dx
   }
 
-  if(ballY + dy < ballRadius) {
+  if (ballHitCeiling()) {
       dy = -dy
   } 
-  else if(ballY + dy > canvas.height-ballRadius) {
-    if(ballX > paddleX && ballX < paddleX + paddleWidth) {
+
+  else if (ballHitFloor()) {
+    if (ballHitPaddle()) {
       dy = -dy
     }
     else {
@@ -120,16 +154,9 @@ function draw() {
       initialState()
     }
   }
-
-  ballX += dx
-  ballY += dy
-
-  if(rightPressed && paddleX < canvas.width-paddleWidth) {
-    paddleX += 7
-  }
-  else if(leftPressed && paddleX > 0) {
-    paddleX -= 7
-  }
+  movePaddle()
+  moveBall()
+  collisionDetection()
   requestAnimationFrame(draw)
 }
 
@@ -141,14 +168,15 @@ function loseLife() {
 }
 
 function checkForWin() {
-  if(score == brickRowCount*brickColumnCount) {
+  if (!bricks.some(b => b.alive===true)) {
+    // TODO: Maybe check for lives left and add bonus 
     gameOver = true
     finalScreen("YOU WIN, CONGRATULATIONS!")
   }
 }
 
 function finalScreen(msg) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  cleanCanvas()
   drawScore()
   drawLives()
   drawMessage(msg)
